@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鸡舍环境智能监测系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 第二个文件原版背景配色 */
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* 页面加载动画 */
+        @keyframes pageEnter {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            animation: pageEnter 0.8s ease-out forwards;
+        }
+
+        /* 第二个文件原版头部样式 */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #64ffda;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        /* 线性主图标+旋转动画 */
+        .header-title svg {
+            width: 32px;
+            height: 32px;
+            stroke: #64ffda;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: iconRotate 3s linear infinite;
+        }
+
+        @keyframes iconRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .device-info {
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #a0aec0;
+        }
+
+        /* 设备在线/离线状态栏 */
+        .status-bar {
+            max-width: 220px;
+            margin: 0 auto;
+            padding: 8px 16px;
+            border-radius: 50px;
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 500ms cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        .status-bar.online {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .status-bar.offline {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: statusBlink 2s infinite;
+        }
+
+        .status-bar.online .status-dot {
+            background: #10b981;
+        }
+
+        .status-bar.offline .status-dot {
+            background: #ef4444;
+            animation: statusBlink 1s infinite;
+        }
+
+        @keyframes statusBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .status-text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-bar.online .status-text {
+            color: #10b981;
+        }
+
+        .status-bar.offline .status-text {
+            color: #ef4444;
+        }
+
+        .device-ip {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        /* 监测列表 */
+        .monitor-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* 监测项卡片 */
+        .monitor-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            animation: cardEnter 0.6s ease-out forwards;
+        }
+
+        /* 卡片错开入场动画 */
+        .monitor-item:nth-child(1) { animation-delay: 0.1s; }
+        .monitor-item:nth-child(2) { animation-delay: 0.2s; }
+        .monitor-item:nth-child(3) { animation-delay: 0.3s; }
+        .monitor-item:nth-child(4) { animation-delay: 0.4s; }
+        .monitor-item:nth-child(5) { animation-delay: 0.5s; }
+        .monitor-item:nth-child(6) { animation-delay: 0.6s; }
+
+        @keyframes cardEnter {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .monitor-item:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 255, 218, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 图标样式 */
+        .item-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .monitor-item:hover .item-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .item-icon svg {
+            width: 28px;
+            height: 28px;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: all 0.3s ease;
+        }
+
+        /* 第二个文件原版主题色 */
+        .temp-icon { background: rgba(248, 113, 113, 0.1); }
+        .temp-icon svg { stroke: #f87171; }
+
+        .humi-icon { background: rgba(96, 165, 250, 0.1); }
+        .humi-icon svg { stroke: #60a5fa; }
+
+        .nh3-icon { background: rgba(167, 139, 250, 0.1); }
+        .nh3-icon svg { stroke: #a78bfa; }
+
+        .co2-icon { background: rgba(251, 191, 36, 0.1); }
+        .co2-icon svg { stroke: #fbbf24; }
+
+        .pm25-icon { background: rgba(252, 165, 165, 0.1); }
+        .pm25-icon svg { stroke: #fca5a5; }
+
+        .pressure-icon { background: rgba(74, 222, 128, 0.1); }
+        .pressure-icon svg { stroke: #4ade80; }
+
+        .item-name {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+        }
+
+        .item-range {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 12px;
+        }
+
+        .item-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #fff;
+            animation: valueGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes valueGlow {
+            from { text-shadow: 0 0 5px rgba(100, 255, 218, 0.3); }
+            to { text-shadow: 0 0 15px rgba(100, 255, 218, 0.5); }
+        }
+
+        .item-unit {
+            font-size: 14px;
+            color: #a0aec0;
+            margin-left: 4px;
+            font-weight: 400;
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        /* ========== 移动端响应式适配 ========== */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+            
+            .header-title {
+                font-size: 17px;
+                gap: 6px;
+            }
+            
+            .header-title svg {
+                width: 20px;
+                height: 20px;
+            }
+            
+            .status-bar {
+                padding: 4px 10px;
+                max-width: 140px;
+            }
+            
+            .status-dot {
+                width: 5px;
+                height: 5px;
+            }
+            
+            .status-text {
+                font-size: 11px;
+            }
+            
+            .monitor-list {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .monitor-item {
+                padding: 12px;
+                border-radius: 10px;
+            }
+            
+            .item-icon {
+                width: 30px;
+                height: 30px;
+                margin-bottom: 8px;
+            }
+            
+            .item-icon svg {
+                width: 16px;
+                height: 16px;
+            }
+            
+            .item-name {
+                font-size: 13px;
+                margin-bottom: 4px;
+            }
+            
+            .item-range {
+                font-size: 9px;
+                margin-bottom: 6px;
+                display: none; /* 隐藏正常区间提示 */
+            }
+            
+            .item-value {
+                font-size: 20px;
+                margin-bottom: 4px;
+            }
+            
+            .item-unit {
+                font-size: 10px;
+            }
+            
+            .progress-bar {
+                height: 3px;
+            }
+        }
+        
+
+        .progress {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .progress-temp { background: #f87171; }
+        .progress-humi { background: #60a5fa; }
+        .progress-nh3 { background: #a78bfa; }
+        .progress-co2 { background: #fbbf24; }
+        .progress-pm25 { background: #fca5a5; }
+        .progress-pressure { background: #4ade80; }
+
+        /* 详情弹窗（含状态提示） */
+        .detail-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .detail-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .detail-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 24px;
+            padding: 40px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .detail-modal.show .detail-content {
+            transform: scale(1);
+        }
+
+        .detail-icon {
+            width: 90px;
+            height: 90px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            animation: detailPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes detailPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        .detail-icon svg {
+            width: 50px;
+            height: 50px;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* 状态提示样式（和原文件完全一致） */
+        .status-tip {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        .status-normal {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+            border-left: 4px solid #4ade80;
+        }
+
+        .status-caution {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border-left: 4px solid #fbbf24;
+        }
+
+        .status-warning {
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            border-left: 4px solid #f87171;
+        }
+        
+        .status-offline {
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            border-left: 4px solid #f87171;
+        }
+
+        /* 离线样式 */
+        body.offline {
+            filter: brightness(0.7);
+        }
+
+        body.offline .monitor-item {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1 class="header-title">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z"></path>
+                    <path d="M2 17L12 22L22 17"></path>
+                    <path d="M2 12L12 17L22 12"></path>
+                </svg>
+                鸡舍环境智能监测系统
+            </h1>
+            <div class="device-info">
+                <div class="status-bar offline">
+                    <span class="status-dot"></span>
+                    <span class="status-text">设备离线</span>
+                </div>
+                <div class="device-ip">设备IP：192.168.1.100</div>
+            </div>
+        </div>
+
+        <!-- 监测列表 -->
+        <div class="monitor-list">
+            <!-- 温度 -->
+            <div class="monitor-item" data-type="temp" data-value="25">
+                <div class="item-icon temp-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14 14.76V3a2 2 0 0 0-4 0v11.76a4 4 0 1 0 4 0z"></path></svg>
+                </div>
+                <div class="item-name">温度</div>
+                <div class="item-range">正常区间：18℃ ~ 28℃</div>
+                <div class="item-value">25<span class="item-unit">℃</span></div>
+                <div class="progress-bar"><div class="progress progress-temp" style="width: 70%;"></div></div>
+            </div>
+
+            <!-- 湿度 -->
+            <div class="monitor-item" data-type="humi" data-value="62">
+                <div class="item-icon humi-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                </div>
+                <div class="item-name">湿度</div>
+                <div class="item-range">正常区间：50% ~ 70%</div>
+                <div class="item-value">62<span class="item-unit">%</span></div>
+                <div class="progress-bar"><div class="progress progress-humi" style="width: 60%;"></div></div>
+            </div>
+
+            <!-- 氨气 -->
+            <div class="monitor-item" data-type="nh3" data-value="5">
+                <div class="item-icon nh3-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L3 7L12 12l9-5z"></path><path d="M3 17l9 5 9-5"></path></svg>
+                </div>
+                <div class="item-name">氨气</div>
+                <div class="item-range">正常区间：0 ~ 10ppm</div>
+                <div class="item-value">5<span class="item-unit">ppm</span></div>
+                <div class="progress-bar"><div class="progress progress-nh3" style="width: 50%;"></div></div>
+            </div>
+
+            <!-- 二氧化碳 -->
+            <div class="monitor-item" data-type="co2" data-value="650">
+                <div class="item-icon co2-icon">
+                    <svg viewBox="0 0 24 24"><path d="M18 8a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4V8z"></path></svg>
+                </div>
+                <div class="item-name">二氧化碳</div>
+                <div class="item-range">正常区间：300 ~ 1000ppm</div>
+                <div class="item-value">650<span class="item-unit">ppm</span></div>
+                <div class="progress-bar"><div class="progress progress-co2" style="width: 50%;"></div></div>
+            </div>
+
+            <!-- PM2.5 -->
+            <div class="monitor-item" data-type="pm25" data-value="18">
+                <div class="item-icon pm25-icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 16 0H4z"></path><path d="M8 12a4 4 0 0 1 8 0H8z"></path></svg>
+                </div>
+                <div class="item-name">PM2.5</div>
+                <div class="item-range">正常区间：0 ~ 35μg/m³</div>
+                <div class="item-value">18<span class="item-unit">μg/m³</span></div>
+                <div class="progress-bar"><div class="progress progress-pm25" style="width: 51%;"></div></div>
+            </div>
+
+            <!-- 气压 -->
+            <div class="monitor-item" data-type="pressure" data-value="101">
+                <div class="item-icon pressure-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
+                </div>
+                <div class="item-name">气压</div>
+                <div class="item-range">正常区间：98 ~ 105kPa</div>
+                <div class="item-value">101<span class="item-unit">kPa</span></div>
+                <div class="progress-bar"><div class="progress progress-pressure" style="width: 60%;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 放大详情弹窗（含所有指标状态提示） -->
+    <div class="detail-modal" id="detailModal">
+        <div class="detail-content">
+            <div class="detail-icon" id="detailIcon"></div>
+            <div style="text-align: center;">
+                <div class="item-name" id="detailName" style="font-size: 26px; margin-bottom: 16px;"></div>
+                <div class="item-value" id="detailValue" style="font-size: 52px;"></div>
+                <div class="item-range" id="detailRange" style="font-size: 16px; margin-top: 16px;"></div>
+                <!-- 状态提示区域（自动显示正常/预警/警告） -->
+                <div class="status-tip" id="statusTip"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🔥 所有指标完整配置（含你要的三段状态提示，和原文件完全一致）
+        const monitorConfig = {
+            temp: {
+                name: "温度", unit: "℃", range: "18℃ ~ 28℃",
+                normal: 22, max: 28, min: 18,
+                normalTip: "当前温度处于肉鸡养殖最优区间，鸡群体感舒适，生长状态良好，无需额外操作。",
+                cautionTip: "当前温度接近临界值，建议加强通风/保温措施，避免温度持续偏离最优区间，防止鸡群出现轻微应激。",
+                warningTip: "当前温度严重超标，会导致鸡群严重应激、采食量大幅下降、发病率上升，请立即采取温控措施，紧急调整通风/加热设备！"
+            },
+            humi: {
+                name: "湿度", unit: "%", range: "50% ~ 70%",
+                normal: 60, max: 70, min: 50,
+                normalTip: "当前湿度处于肉鸡养殖最优区间，鸡群呼吸道健康，垫料状态良好，无霉变风险。",
+                cautionTip: "当前湿度接近临界值，建议适当加强通风或调整饮水设备，避免垫料过干/过湿。",
+                warningTip: "当前湿度严重超标，易导致鸡群呼吸道疾病、垫料霉变、细菌滋生，请立即加强通风除湿/加湿！"
+            },
+            nh3: {
+                name: "氨气", unit: "ppm", range: "0 ~ 10ppm",
+                normal: 5, max: 10, min: 0,
+                normalTip: "当前氨气浓度处于安全最优范围，鸡舍空气清新，无刺激性气味，鸡群健康无应激。",
+                cautionTip: "当前氨气浓度接近预警值，建议加强通风换气，及时清理粪便，避免浓度持续升高。",
+                warningTip: "当前氨气浓度严重超标，会严重损伤鸡群呼吸道黏膜，导致免疫力下降、发病率激增，请立即强力通风！"
+            },
+            co2: {
+                name: "二氧化碳", unit: "ppm", range: "300 ~ 1000ppm",
+                normal: 650, max: 1000, min: 300,
+                normalTip: "当前二氧化碳浓度处于最优范围，鸡舍空气流通良好，鸡群呼吸顺畅，生长状态佳。",
+                cautionTip: "当前二氧化碳浓度接近临界值，建议增加通风量，保证鸡舍氧气供应充足。",
+                warningTip: "当前二氧化碳浓度严重超标，会导致鸡群缺氧、呼吸急促、生长迟缓，请立即全面通风换气！"
+            },
+            pm25: {
+                name: "PM2.5", unit: "μg/m³", range: "0 ~ 35μg/m³",
+                normal: 18, max: 35, min: 0,
+                normalTip: "当前PM2.5浓度处于优质范围，鸡舍粉尘少，空气洁净，鸡群呼吸道无刺激。",
+                cautionTip: "当前PM2.5浓度接近预警值，建议适当洒水降尘、清理粉尘，加强通风。",
+                warningTip: "当前PM2.5浓度严重超标，会引发鸡群呼吸道疾病、眼炎，影响生长，请立即降尘+强力通风！"
+            },
+            pressure: {
+                name: "气压", unit: "kPa", range: "98 ~ 105kPa",
+                normal: 101, max: 105, min: 98,
+                normalTip: "当前气压处于最优区间，鸡群体感舒适，无气压应激，生长状态稳定。",
+                cautionTip: "当前气压接近临界值，建议适当调整通风，密切观察鸡群状态。",
+                warningTip: "当前气压严重异常，易导致鸡群应激、呼吸不适，请及时调整鸡舍通风负压！"
+            }
+        };
+
+        // 图标库
+        const iconSvgs = {
+            temp: '<svg viewBox="0 0 24 24"><path d="M14 14.76V3a2 2 0 0 0-4 0v11.76a4 4 0 1 0 4 0z"></path></svg>',
+            humi: '<svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>',
+            nh3: '<svg viewBox="0 0 24 24"><path d="M12 2L3 7L12 12l9-5z"></path><path d="M3 17l9 5 9-5"></path></svg>',
+            co2: '<svg viewBox="0 0 24 24"><path d="M18 8a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4V8z"></path></svg>',
+            pm25: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 16 0H4z"></path><path d="M8 12a4 4 0 0 1 8 0H8z"></path></svg>',
+            pressure: '<svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>'
+        };
+
+        // DOM元素
+        const modal = document.getElementById('detailModal');
+        const detailIcon = document.getElementById('detailIcon');
+        const detailName = document.getElementById('detailName');
+        const detailValue = document.getElementById('detailValue');
+        const detailRange = document.getElementById('detailRange');
+        const statusTip = document.getElementById('statusTip');
+
+        // 点击卡片放大详情（自动匹配状态提示）
+        document.querySelectorAll('.monitor-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const type = item.dataset.type;
+                const value = item.dataset.value;
+                const config = monitorConfig[type];
+                
+                // 判断是否为离线状态
+                if (value === 'offline' || !realData) {
+                    // 离线状态显示
+                    detailIcon.className = `detail-icon ${type}-icon`;
+                    detailIcon.innerHTML = iconSvgs[type];
+                    detailName.textContent = `${config.name}详情`;
+                    detailValue.textContent = '暂无数据';
+                    detailRange.textContent = `正常区间：${config.range}`;
+                    statusTip.className = 'status-tip status-offline';
+                    statusTip.textContent = '当前设备处于离线状态，无法获取实时监测数据，请检查设备供电与网络连接。';
+                } else {
+                    // 在线状态显示真实数据
+                    const numericValue = parseFloat(value);
+                    
+                    // 判断状态
+                    let statusClass, tipText;
+                    if (numericValue >= config.min && numericValue <= config.max) {
+                        statusClass = 'status-normal';
+                        tipText = config.normalTip;
+                    } else if (Math.abs(numericValue - config.normal) <= 3) {
+                        statusClass = 'status-caution';
+                        tipText = config.cautionTip;
+                    } else {
+                        statusClass = 'status-warning';
+                        tipText = config.warningTip;
+                    }
+
+                    // 填充详情
+                    detailIcon.className = `detail-icon ${type}-icon`;
+                    detailIcon.innerHTML = iconSvgs[type];
+                    detailName.textContent = `${config.name}详情`;
+                    detailValue.textContent = `${numericValue}${config.unit}`;
+                    detailRange.textContent = `正常区间：${config.range}`;
+                    statusTip.className = `status-tip ${statusClass}`;
+                    statusTip.textContent = tipText;
+                }
+
+                modal.classList.add('show');
+            });
+        });
+
+        // 点击空白关闭弹窗
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('show');
+        });
+
+        // ========== ESP32连接功能 ==========
+        
+        // ESP32设备配置
+        const ESP32_CONFIG = {
+            baseUrl: 'http://192.168.1.100', // 需要根据实际ESP32 IP修改
+            apiEndpoint: '/api/sensor',
+            updateInterval: 5000, // 数据更新间隔（毫秒）
+            maxRetries: 3,
+            retryDelay: 2000
+        };
+
+        // 全局实时数据（初始为空，表示未连接）
+        let realData = null;
+
+        // 从ESP32获取传感器数据
+        async function fetchSensorData() {
+            try {
+                const response = await fetch(`${ESP32_CONFIG.baseUrl}${ESP32_CONFIG.apiEndpoint}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                // 更新真实传感器数据
+                realData = {
+                    temp: data.temperature || 0,
+                    humi: data.humidity || 0,
+                    nh3: data.nh3_concentration || 0,
+                    co2: data.co2_concentration || 0,
+                    pm25: data.pm25_concentration || 0,
+                    pressure: data.pressure || 0
+                };
+                
+                return true;
+            } catch (error) {
+                console.error('获取传感器数据失败:', error);
+                realData = null; // 连接失败时清空数据
+                return false;
+            }
+        }
+
+        // 更新网页显示
+        function updateDisplay() {
+            if (!realData) {
+                // 未连接状态：显示离线提示
+                showOfflineStatus();
+                return;
+            }
+            
+            // 已连接状态：显示真实数据
+            // 更新温度
+            const tempValue = document.querySelector('[data-type="temp"] .item-value');
+            const tempProgress = document.querySelector('[data-type="temp"] .progress-bar');
+            if (tempValue) {
+                tempValue.textContent = realData.temp.toFixed(1);
+                tempValue.parentElement.dataset.value = realData.temp;
+                tempProgress.style.width = ((realData.temp - 20) / 10 * 100) + '%';
+            }
+
+            // 更新湿度
+            const humiValue = document.querySelector('[data-type="humi"] .item-value');
+            const humiProgress = document.querySelector('[data-type="humi"] .progress-bar');
+            if (humiValue) {
+                humiValue.textContent = realData.humi.toFixed(1);
+                humiValue.parentElement.dataset.value = realData.humi;
+                humiProgress.style.width = ((realData.humi - 50) / 20 * 100) + '%';
+            }
+
+            // 更新氨气浓度
+            const nh3Value = document.querySelector('[data-type="nh3"] .item-value');
+            const nh3Progress = document.querySelector('[data-type="nh3"] .progress-bar');
+            if (nh3Value) {
+                nh3Value.textContent = realData.nh3.toFixed(1);
+                nh3Value.parentElement.dataset.value = realData.nh3;
+                nh3Progress.style.width = (realData.nh3 / 20 * 100) + '%';
+            }
+
+            // 更新二氧化碳浓度
+            const co2Value = document.querySelector('[data-type="co2"] .item-value');
+            const co2Progress = document.querySelector('[data-type="co2"] .progress-bar');
+            if (co2Value) {
+                co2Value.textContent = realData.co2.toFixed(1);
+                co2Value.parentElement.dataset.value = realData.co2;
+                co2Progress.style.width = (realData.co2 / 1500 * 100) + '%';
+            }
+
+            // 更新PM2.5浓度
+            const pm25Value = document.querySelector('[data-type="pm25"] .item-value');
+            const pm25Progress = document.querySelector('[data-type="pm25"] .progress-bar');
+            if (pm25Value) {
+                pm25Value.textContent = realData.pm25.toFixed(1);
+                pm25Value.parentElement.dataset.value = realData.pm25;
+                pm25Progress.style.width = (realData.pm25 / 50 * 100) + '%';
+            }
+
+            // 更新气压
+            const pressureValue = document.querySelector('[data-type="pressure"] .item-value');
+            const pressureProgress = document.querySelector('[data-type="pressure"] .progress-bar');
+            if (pressureValue) {
+                pressureValue.textContent = realData.pressure.toFixed(1);
+                pressureValue.parentElement.dataset.value = realData.pressure;
+                pressureProgress.style.width = ((realData.pressure - 980) / 50 * 100) + '%';
+            }
+        }
+        
+        // 显示离线状态
+        function showOfflineStatus() {
+            const items = document.querySelectorAll('.monitor-item');
+            items.forEach(item => {
+                const valueElement = item.querySelector('.item-value');
+                if (valueElement) {
+                    valueElement.textContent = '暂无数据';
+                    valueElement.parentElement.dataset.value = 'offline';
+                }
+                const progressBar = item.querySelector('.progress');
+                if (progressBar) {
+                    progressBar.style.width = '0%';
+                }
+            });
+        }
+
+        // 自动更新数据
+        async function autoUpdateData() {
+            let retryCount = 0;
+            
+            while (retryCount < ESP32_CONFIG.maxRetries) {
+                const success = await fetchSensorData();
+                if (success) {
+                    updateDisplay();
+                    retryCount = 0; // 重置重试计数
+                    
+                    // 更新状态为在线
+                    const statusElement = document.querySelector('.status-bar');
+                    if (statusElement) {
+                        statusElement.className = 'status-bar online';
+                        statusElement.innerHTML = '<span class="status-dot"></span><span class="status-text">设备在线</span>';
+                    }
+                    
+                    break;
+                } else {
+                    retryCount++;
+                    if (retryCount < ESP32_CONFIG.maxRetries) {
+                        console.log(`第${retryCount}次重试...`);
+                        await new Promise(resolve => setTimeout(resolve, ESP32_CONFIG.retryDelay));
+                    }
+                }
+            }
+            
+            if (retryCount >= ESP32_CONFIG.maxRetries) {
+                console.error('连接ESP32失败，设备离线');
+                // 显示离线状态
+                const statusElement = document.querySelector('.status-bar');
+                if (statusElement) {
+                    statusElement.className = 'status-bar offline';
+                    statusElement.innerHTML = '<span class="status-dot"></span><span class="status-text">设备离线</span>';
+                }
+                // 显示离线数据（--）
+                updateDisplay();
+            }
+        }
+
+        // 启动数据更新
+        function startDataUpdate() {
+            // 页面加载时已经显示离线状态，无需额外设置
+            showOfflineStatus();
+            
+            // 立即尝试连接一次
+            autoUpdateData();
+            
+            // 设置定时更新
+            setInterval(autoUpdateData, ESP32_CONFIG.updateInterval);
+        }
+
+        // 页面加载完成后启动数据更新
+        document.addEventListener('DOMContentLoaded', function() {
+            startDataUpdate();
+        });
+    </script>
+</body>
+</html>
